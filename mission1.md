@@ -27,3 +27,14 @@
 私营经济
 科技研究
 商业贸易
+
+http://stackoverflow.com/questions/10526579/use-scikit-learn-to-classify-into-multiple-categories
+https://www.kaggle.com/c/wise-2014/forums/t/9867/code-sharing
+https://yanirseroussi.com/tag/multi-label-classification/
+https://pystruct.github.io/auto_examples/multi_label.html
+http://stats.stackexchange.com/questions/117796/scikit-multi-label-classification
+http://scikit-learn.org/stable/modules/multiclass.html
+http://scikit-learn.org/dev/modules/multiclass.html
+http://scikit-learn.org/stable/auto_examples/plot_multilabel.html
+
+http://scikit.ml/api/index.html
