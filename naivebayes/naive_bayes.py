@@ -2,7 +2,12 @@
 import sys
 import numpy
 import jieba
+import codecs
+import jieba.analyse
+import jieba.posseg as pseg
+import itertools, copy
 import random
+import re
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer, HashingVectorizer, CountVectorizer
 from sklearn import metrics
@@ -10,13 +15,14 @@ from sklearn.naive_bayes import BernoulliNB
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.naive_bayes import GaussianNB
 from sklearn.feature_extraction.text import HashingVectorizer
-import re
-import codecs
-import itertools, copy
+
+reload(sys) 
+sys.setdefaultencoding('utf-8')
+'''
 f = open('data.txt')         
 # sourceInLines = f.readlines()  
 #按行读出文件内容
-train_data = []      
+train_data = []
 line = ""                             
 for lines in f:
     
@@ -32,7 +38,9 @@ for lines in f:
 # print ''.join(new)
 print len(train_data)
 f.close()
+'''
 ##########################################
+'''
 f = open('target.txt')         
 # sourceInLines = f.readlines()  
 #按行读出文件内容
@@ -40,22 +48,58 @@ train_target = []
 line = ""                             
 for line in f:
     train_target.append(line)
-        
-# print ''.join(train_target)
-# print  train_target
+
+print  len(train_target)
 f.close()
-######################################
+'''
+f = open('sentence_data.txt')         
+# sourceInLines = f.readlines()  
+#按行读出文件内容
+train_data = []      
+line = ""                             
+for line in f:
+    train_data.append(line)
+
+# print  len(train_target)
+f.close()
+
+
+f = open('sentence_target.txt')         
+# sourceInLines = f.readlines()  
+#按行读出文件内容
+train_target = []      
+line = ""                             
+for line in f:
+    train_target.append(line)
+
+print  len(train_target)
+f.close()
+
+################# format data #####################
+# def cut_paragraph(cut_result):
+#     # cut_result = pseg.cut(test_sent)
+#     sentence_list = []
+#     for word, flag in cut_result:
+#         print word
+#         sentence_list.append(word)
+#         # print(word, "/", flag, ", ", end=' ')
+#     return sentence_list
+
+# data = []
+# for x in range(len(train_data)):
+#     words = pseg.cut(train_data[x])
+#     cut_paragraph(words)
+
 data = []
-for x in range(len(train_target)):
+for x in range(len(train_data)):
     data.append([train_data[x], train_target[x]])
 
 random.shuffle(data)
-
-comma_tokenizer = lambda x: jieba.cut(x, cut_all=True)
-
+##############################################
+comma_tokenizer = lambda x: jieba.cut(x, cut_all = True)
 
 def vectorize(train_words, test_words):
-    v = HashingVectorizer(tokenizer=comma_tokenizer, n_features=30000, non_negative=True)
+    v = HashingVectorizer(tokenizer = comma_tokenizer, n_features = 30000, non_negative = True)
     train_data = v.fit_transform(train_words)
     test_data = v.fit_transform(test_words)
     return train_data, test_data
@@ -69,7 +113,7 @@ def evaluate(actual, pred):
 
 
 def train_clf(train_data, train_tags):
-    clf = MultinomialNB(alpha=0.001) #adjust it !!!!!!!
+    clf = MultinomialNB(alpha=0.0001) #adjust it !!!!!!!
     clf.fit(train_data, numpy.asarray(train_tags))
     return clf
 
@@ -89,13 +133,23 @@ train_data, test_data = vectorize(train_words, test_words)
 # print train_data, test_data
 clf = train_clf(train_data, train_tags)
 pred = clf.predict(test_data)
-# print "".join(pred)
-length = len(test_tags)
+
+# print "".join(test_tags)
 test_tags = numpy.array(test_tags)
 # print test_tags.tolist()
 # print pred.tolist()
 right_num = (test_tags == pred).sum()
 print(right_num)
-print length
+print len(test_tags),  len(pred.tolist()), len(test_words)
 # print test_tags
 evaluate(numpy.asarray(test_tags), pred)
+
+result_str = ""
+pred_list = pred.tolist()
+for x in range(len(test_tags)):
+    result_str += pred_list[x] + "    " + test_tags[x] + "\n" + test_words[x] + "\n"
+# print result_str
+
+log_f = open("result_str.txt","wb")
+log_f.write(result_str)
+log_f.close()
