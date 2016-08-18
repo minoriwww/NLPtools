@@ -5,10 +5,11 @@ import jieba
 import sys
 import re
 import io
+import pprint
 import random
+import pylab as pl
+from time import time
 from sklearn.pipeline import Pipeline
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.multiclass import OneVsRestClassifier
@@ -19,14 +20,15 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer, HashingVectorizer, CountVectorizer
 from sklearn import metrics
 from sklearn.naive_bayes import BernoulliNB
-from sklearn.naive_bayes import MultinomialNB
 from sklearn.naive_bayes import GaussianNB
-from sklearn.feature_extraction.text import HashingVectorizer
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+from sklearn.metrics import accuracy_score
 
 reload(sys) 
 sys.setdefaultencoding('utf-8')
 
-lables = [
+label = [
 "农业",
 
 "工业",
@@ -60,28 +62,23 @@ lables = [
 "科技研究"
 ]
 
-for word in lables:
+for word in label:
     jieba.add_word(word, freq=10)
 
 train_data = []
 train_target= []
 
-# f = open('newkeywords.txt')  
 with io.open('newkeywords.txt', 'r', encoding='utf8') as f:       
     # sourceInLines = f.readlines()  
     #按行读出文件内容
 
     line = "" 
     for lines in f:
-        # if lines.strip() in lables:
-        if lines.strip().split(" ")[0] in lables:
+        if lines.strip().split(" ")[0] in label:
             if line == "":
                 continue
-            # lables_in_sentence = unicode(lines).strip().split(" ")
             lables_in_sentence = lines.encode('utf-8').strip().split(" ")
-            # for i in lables_in_sentence : print i
-            # print "-"*10
-            # lables_in_sentence_str += lables_in_sentence[i]
+
             
             train_data.append(line)
             # train_data.append(unicode(line))
@@ -90,15 +87,7 @@ with io.open('newkeywords.txt', 'r', encoding='utf8') as f:
             
         else:
             line += lines.encode('utf-8').strip()
-        
-# print ''.join(train_target)
-# for i in train_target : 
-#     for j in i:
-#         print j
-# for i in train_data:print i
-# print len(train_data), len(train_target)  
-# print train_target
-    
+
 ######################################################################################
 '''
 
@@ -141,82 +130,76 @@ X_train = np.array([each[0] for each in data[:ratio]])
 y_train_text = [each[1] for each in data[:ratio]]
 X_test = np.array([each[0] for each in data[ratio:]])
 y_test_text = [each[1] for each in data[ratio:]]
-print len(X_test), len(y_test_text)
-# print X_train[0]
-# print y_train_text 
+
+lables_utf8 = [i.encode('utf-8') for i in list(set(label))]
 
 ##################################################################################
-lb = preprocessing.MultiLabelBinarizer()
-Y = lb.fit_transform(y_train_text)
-# Y = MultiLabelBinarizer().fit_transform(y_train_text)
+# 没有encoder直接binarizer会报错：multilable应使用稀疏矩阵或01向量。。。
+newlabel = []
+for x in label : newlabel.append(x.strip().encode('utf-8'))
+
+le = preprocessing.LabelEncoder()
+le.fit(y_train_text)
+print le.classes_
+lable_number = le.transform(y_train_text)
+
+############## choose one : LabelBinarizer###################
+# lb = preprocessing.LabelBinarizer()
+# Y = lb.fit_transform(lable_number)
+################ choose one : MultiLabelBinarizer#################
+pre_lb_fit_trans = []
+for x in lable_number:
+    pre_lb_fit_trans.append([x])
+print pre_lb_fit_trans
+# lb = preprocessing.MultiLabelBinarizer(classes=tuple(label))
+# Y = lb.fit_transform(pre_lb_fit_trans)
+print len(tuple(label))
+print len(y_train_text)
+mlb = MultiLabelBinarizer()
+Y = mlb.fit_transform(pre_lb_fit_trans)
+print len(mlb.classes_)
 ##########################################################
-comma_tokenizer = lambda x: jieba.cut(x, cut_all=True)
-# seg_list = comma_tokenizer(X_train[0]) 
-# print(", ".join(seg_list))
+comma_tokenizer = lambda x: jieba.cut(x, cut_all=True,  HMM=False)
 
 classifier = Pipeline([
-    ('vectorizer', HashingVectorizer(tokenizer = comma_tokenizer, n_features = 10000, non_negative = True)),
-    # ('vectorizer', preprocessing.MultiLabelBinarizer()),
+    # ('vectorizer', HashingVectorizer(tokenizer = comma_tokenizer, non_negative=True)),
+    ('vectorizer', CountVectorizer(tokenizer = comma_tokenizer, lowercase=False)),
+    # ('bin', preprocessing.MultiLabelBinarizer()),
     ('tfidf', TfidfTransformer()),
-    ('clf', OneVsRestClassifier(MultinomialNB(alpha=0.0001)))
+    ('clf', OneVsRestClassifier(MultinomialNB(alpha=0.01)))
     # ('clf', MultinomialNB(alpha=0.0001))
     ])
 
-#######################################################################################
-# def vectorize(train_words, test_words, v = HashingVectorizer(tokenizer = comma_tokenizer, n_features = 30000, non_negative = True)):    
-#     train_data = v.fit_transform(train_words)
-#     test_data = v.fit_transform(test_words)
-#     return train_data, test_data
 
-# # ndarray, ndarray, clf
-# def train_clf(train_data, train_tags, clf = MultinomialNB(alpha=0.0001)):
-#     #adjust alpha !!!!!!!
-#     clf.fit(train_data, train_tags)
-#     return clf
-    
-# # 4 ndarray
-# train_data, test_data = vectorize(train_words = X_train.tolist(), test_words = X_test.tolist(), v = preprocessing.MultiLabelBinarizer())
-# y_train_text, y_test_text = vectorize(train_words = y_train_text, test_words = y_test_text, v = preprocessing.MultiLabelBinarizer())
+classifier.fit(X_train, Y)
+predicted = classifier.predict(X_test)
+all_labels = mlb.inverse_transform(predicted)
+print all_labels
+print "-"*20
+'''
+lable_result = ''
+for item, labels in zip(X_test, all_labels):
+    for i in range(len(labels)):
+        # print le.inverse_transform(labels[i])
+        for j in le.inverse_transform(labels[i]):
+            lable_result += j    
+    lable_result += '\n'+'*'*30
+    print '%s => %s' % (item, lable_result )
+    lable_result = ''
 
-# clf = train_clf(train_data = train_data, train_tags = y_train_text, clf = OneVsRestClassifier(LinearSVC()))
-# pred = clf.predict(X_test)
-
-#############################################################################
-
-class_fit = classifier.fit(X_train, Y)
-
-predicted = class_fit.predict(X_test)
-print predicted
-all_labels = lb.inverse_transform(predicted)
-temp_train = classifier.named_steps['vectorizer'].fit_transform(X_train.tolist())
-
+'''
+# for item, labels in zip(X_test, predicted):
+#     print '%s => %s' % (item, ', '.join(target_names[x] for x in labels))
+print len(X_test)
+prob = classifier.predict_proba(X_test)
+print prob
 pred = []
-prob = classifier.named_steps['clf'].predict_proba(temp_train)
-print prob.shape
-for i in range(len(y_test_text)):
+# prob = clf.predict_proba(test_data)
+for i in range(len(X_train)):
     temp = []
-    for j in range(len(classifier.named_steps['clf'].classes_)):
+    for j in range(len(clf.classes_)):
         if (prob[i][j] == prob[i].max() or prob[i][j] >= 0) and prob[i].max()-prob[i][j] <= 0.02:
-            temp.append(classifier.named_steps['clf'].classes_[j])
+            temp.append(clf.classes_[j])
     pred.append(temp)
 print 'max number of tags:'+ str(numpy.array([len(i) for i in pred]).max())
 print 'min number of tags:'+ str(numpy.array([len(i) for i in pred]).min())
-
-# result_str = ''
-# for i in range(len(X_test)):
-#     result_str += X_test[i]+'\n'
-#     for j in range(len(pred[i])):
-#         # result_str += classifier.named_steps['tfidf'].transform(pred, copy=True)[i][j]       
-#         result_str += pred[i][j].decode('utf-8') + '   '
-#     result_str += '\n\n'
-
-print classifier.named_steps['clf'].get_params()
-# print result_str.decode('utf-8')
-
-# predicted = class_fit.predict_proba
-# print predicted
-# all_labels = lb.inverse_transform(predicted)
-
-# for item, labels in zip(X_test, all_labels):
-#     print u'%s => %s' % (item, ', '.join(labels))
-# print len(X_test), type(all_labels)
