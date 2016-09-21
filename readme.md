@@ -7,3 +7,5 @@
 [University of Colorado语料库](http://verbs.colorado.edu/chinese/cpb/html_frames/index.html)
 
 - [example](http://verbs.colorado.edu/chinese/cpb/html_frames/index.html)
+
+[python高级数据结构与文本操作](http://blog.jobbole.com/65218/)
